@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Flask CRUD App</title>
+
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 40px;
+        }
+
+        input {
+            padding: 6px;
+            margin: 5px;
+        }
+
+        button {
+            padding: 6px 12px;
+            cursor: pointer;
+        }
+
+        table {
+            margin-top: 20px;
+            border-collapse: collapse;
+            width: 70%;
+        }
+
+        th, td {
+            border: 1px solid #ccc;
+            padding: 8px;
+        }
+
+        .error {
+            color: red;
+        }
+
+        .success {
+            color: green;
+        }
+    </style>
+</head>
+
+<body>
+
+<h2>🚀 Flask CRUD Application</h2>
+
+<div>
+    <input id="name" placeholder="Name">
+    <input id="email" placeholder="Email">
+    <button onclick="createUser()">Add User</button>
+</div>
+
+<p id="message"></p>
+
+<table>
+    <thead>
+        <tr>
+            <th>ID</th>
+            <th>Name</th>
+            <th>Email</th>
+            <th>Actions</th>
+        </tr>
+    </thead>
+
+    <tbody id="users"></tbody>
+</table>
+
+<script>
+const API = "/api/users";
+let editId = null;
+
+// -----------------
+// CREATE / UPDATE
+// -----------------
+function createUser() {
+    const name = document.getElementById("name").value.trim();
+    const email = document.getElementById("email").value.trim();
+
+    if (!name || !email) {
+        showMessage("Name and Email are required ❌", "error");
+        return;
+    }
+
+    const payload = { name, email };
+
+    const method = editId ? "PUT" : "POST";
+    const url = editId ? `${API}/${editId}` : API;
+
+    fetch(url, {
+        method: method,
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify(payload)
+    })
+    .then(res => {
+        if (!res.ok) throw new Error("Request failed");
+        return res.json();
+    })
+    .then(() => {
+        showMessage(editId ? "User updated ✅" : "User created ✅", "success");
+        resetForm();
+        loadUsers();
+    })
+    .catch(() => showMessage("Operation failed ❌", "error"));
+}
+
+// -----------------
+// READ
+// -----------------
+function loadUsers() {
+    fetch(API)
+        .then(res => res.json())
+        .then(data => {
+            const table = document.getElementById("users");
+            table.innerHTML = "";
+
+            data.data.forEach(user => {
+                table.innerHTML += `
+                    <tr>
+                        <td>${user.id}</td>
+                        <td>${user.name}</td>
+                        <td>${user.email}</td>
+                        <td>
+                            <button onclick="editUser(${user.id}, '${user.name}', '${user.email}')">✏ Edit</button>
+                            <button onclick="deleteUser(${user.id})">🗑 Delete</button>
+                        </td>
+                    </tr>
+                `;
+            });
+        });
+}
+
+// -----------------
+// EDIT
+// -----------------
+function editUser(id, name, email) {
+    editId = id;
+    document.getElementById("name").value = name;
+    document.getElementById("email").value = email;
+    showMessage("Editing mode enabled ✏", "success");
+}
+
+// -----------------
+// DELETE
+// -----------------
+function deleteUser(id) {
+    if (!confirm("Are you sure you want to delete this user?")) return;
+
+    fetch(`${API}/${id}`, { method: "DELETE" })
+        .then(res => {
+            if (!res.ok) throw new Error();
+            return res.json();
+        })
+        .then(() => {
+            showMessage("User deleted 🗑", "success");
+            loadUsers();
+        })
+        .catch(() => showMessage("Delete failed ❌", "error"));
+}
+
+// -----------------
+// UTILITIES
+// -----------------
+function resetForm() {
+    editId = null;
+    document.getElementById("name").value = "";
+    document.getElementById("email").value = "";
+}
+
+function showMessage(msg, type) {
+    const el = document.getElementById("message");
+    el.className = type;
+    el.innerText = msg;
+
+    setTimeout(() => el.innerText = "", 3000);
+}
+
+loadUsers();
+</script>
+
+</body>
+</html>
