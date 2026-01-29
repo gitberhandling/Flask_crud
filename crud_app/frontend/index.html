@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Flask CRUD App</title>
+  <style>
+    table { border-collapse: collapse; width: 60%; margin-top: 15px; }
+    th, td { border: 1px solid #ccc; padding: 8px; }
+    button { cursor: pointer; }
+  </style>
+</head>
+<body>
+
+<h2>Items CRUD</h2>
+
+<form id="itemForm">
+  <input type="text" id="name" placeholder="Name" required>
+  <input type="text" id="description" placeholder="Description">
+  <button type="submit">Add Item</button>
+</form>
+
+<br>
+
+<input type="text" id="filter" placeholder="Filter by name">
+<button id="filterBtn">Filter</button>
+
+<table>
+  <thead>
+    <tr>
+      <th>
+        <button id="sortBtn">Sort by Name</button>
+      </th>
+      <th>Description</th>
+      <th>Actions</th>
+    </tr>
+  </thead>
+  <tbody id="itemsTable"></tbody>
+</table>
+
+<br>
+
+<button id="prevPage">Prev</button>
+<span id="pageInfo"></span>
+<button id="nextPage">Next</button>
+
+<script>
+let page = 1;
+let totalPages = 1;
+let sortOrder = 'asc';
+let filter = '';
+
+async function fetchItems() {
+  const res = await fetch(`/item?page=${page}&per_page=5&sort_by=name&order=${sortOrder}&name=${filter}`);
+  const data = await res.json();
+
+  totalPages = data.total_pages;
+  document.getElementById('pageInfo').innerText =
+    `Page ${data.page} of ${totalPages}`;
+
+  const tbody = document.getElementById('itemsTable');
+  tbody.innerHTML = '';
+
+  data.data.forEach(item => {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td>${item.name}</td>
+      <td>${item.description || ''}</td>
+      <td>
+        <button onclick="editItem(${item.id})">Edit</button>
+        <button onclick="deleteItem(${item.id})">Delete</button>
+      </td>`;
+    tbody.appendChild(tr);
+  });
+}
+
+async function addItem(e) {
+  e.preventDefault();
+
+  const name = document.getElementById('name').value;
+  const description = document.getElementById('description').value;
+
+  await fetch('/item', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ name, description })
+  });
+
+  document.getElementById('itemForm').reset();
+  fetchItems();
+}
+
+async function editItem(id) {
+  const name = prompt('New name:');
+  if (!name) return;
+
+  const description = prompt('New description:');
+
+  await fetch(`/item/${id}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ name, description })
+  });
+
+  fetchItems();
+}
+
+async function deleteItem(id) {
+  if (!confirm('Are you sure?')) return;
+
+  await fetch(`/item/${id}`, { method: 'DELETE' });
+  fetchItems();
+}
+
+document.getElementById('itemForm').addEventListener('submit', addItem);
+document.getElementById('nextPage').addEventListener('click', () => {
+  if (page < totalPages) page++;
+  fetchItems();
+});
+document.getElementById('prevPage').addEventListener('click', () => {
+  if (page > 1) page--;
+  fetchItems();
+});
+document.getElementById('sortBtn').addEventListener('click', () => {
+  sortOrder = sortOrder === 'asc' ? 'desc' : 'asc';
+  fetchItems();
+});
+document.getElementById('filterBtn').addEventListener('click', () => {
+  filter = document.getElementById('filter').value;
+  page = 1;
+  fetchItems();
+});
+
+fetchItems();
+</script>
+
+</body>
+</html>
